@@ -1,8 +1,9 @@
 #pragma once
 
-#include "parser.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include "parser.h"
 
 typedef struct code_gen_t {
     uint8_t free_regs[4];
@@ -10,3 +11,5 @@ typedef struct code_gen_t {
     FILE *out;
     parser_t *parser;
 } code_gen_t;
+
+void code_generation(code_gen_t *code_gen);

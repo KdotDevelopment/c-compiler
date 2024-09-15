@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdlib.h>
 #include "lex.h"
 
 typedef struct ast_node_t {
@@ -27,7 +28,7 @@ enum {
 	AST_RETURN
 };
 
-char *ast_type_strings[] = {
+static char *ast_type_strings[] = {
 	"NULL",
 	"PROGRAM",
 	"ADD",
@@ -41,3 +42,6 @@ char *ast_type_strings[] = {
 
 ast_node_t *create_ast_node(int ast_type, ast_node_t *left, ast_node_t *right);
 ast_node_t *create_ast_leaf(int ast_type);
+
+void parse(parser_t *parser);
+void print_tree(ast_node_t *root_node, int depth);
