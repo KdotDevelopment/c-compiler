@@ -97,7 +97,7 @@ void get_keyword(token_t *token) { //takes the ident string and converts it to a
 	else if(!strcmp(token->ident_value, "void")) token->keyword = K_VOID;
 	else if(!strcmp(token->ident_value, "volatile")) token->keyword = K_VOLATILE;
 	else if(!strcmp(token->ident_value, "while")) token->keyword = K_WHILE;
-	else token->keyword = K_NAME; //Must be a user defined variable name
+	else token->keyword = K_IDENT; //Must be a user defined variable name
 }
 
 token_t scan(lexer_t *lexer) {
@@ -105,6 +105,7 @@ token_t scan(lexer_t *lexer) {
 	token_t token;
 	memset(token.ident_value, 0, MAX_IDENT_LENGTH);
 	token.int_value = -1;
+	char next_char;
 	switch(lexer->character) {
 		case -1:
 			token.token = T_EOF;
@@ -125,7 +126,13 @@ token_t scan(lexer_t *lexer) {
 			token.token = T_SLASH;
 			break;
 		case '=':
-			token.token = T_EQUAL;
+			next_char = skip_char(lexer);
+			if(next_char == '=') {
+				token.token = T_EQUALS;
+				break;
+			}
+			ungetc(next_char, lexer->in_file);
+			token.token = T_ASSIGN;
 			break;
 		case ';':
 			token.token = T_SEMICOLON;
@@ -144,6 +151,33 @@ token_t scan(lexer_t *lexer) {
 			break;
 		case '}':
 			token.token = T_RSQUIRLY;
+			break;
+		case '!':
+			next_char = skip_char(lexer);
+			if(next_char == '=') {
+				token.token = T_NOT_EQUALS;
+				break;
+			}
+			ungetc(next_char, lexer->in_file);
+			token.token = T_NOT;
+			break;
+		case '>':
+			next_char = skip_char(lexer);
+			if(next_char == '=') {
+				token.token = T_GREATER_EQUALS;
+				break;
+			}
+			ungetc(next_char, lexer->in_file);
+			token.token = T_GREATER_THAN;
+			break;
+		case '<':
+			next_char = skip_char(lexer);
+			if(next_char == '=') {
+				token.token = T_LESS_EQUALS;
+				break;
+			}
+			ungetc(next_char, lexer->in_file);
+			token.token = T_LESS_THAN;
 			break;
 		default:
 			if(isdigit(lexer->character)) {
@@ -173,14 +207,14 @@ int clean_tokens(lexer_t *lexer) {
 }
 
 int lex(lexer_t *lexer) {
-	size_t max_token_count = 64;
+	size_t max_token_count = 128;
 	lexer->line_num = 1;
 	lexer->tokens = (token_t **)malloc(max_token_count * sizeof(token_t *));
 
 	token_t current_token;
-	size_t token_index = 0;
+	lexer->token_index = 0;
 	while(current_token.token != T_EOF) {
-		if(token_index > max_token_count) {
+		if(lexer->token_index > max_token_count) {
 			max_token_count *= 2;
 			lexer->tokens = (token_t **)realloc(lexer->tokens, max_token_count * sizeof(token_t *));
 		}
@@ -195,7 +229,7 @@ int lex(lexer_t *lexer) {
 		permenant_token->token = current_token.token;
 		permenant_token->line_num = current_token.line_num;
 
-		lexer->tokens[token_index++] = permenant_token;
+		lexer->tokens[lexer->token_index++] = permenant_token;
 		//printf("%d - %d . %d - %s \n", current_token.token, current_token.keyword, current_token.int_value, current_token.ident_value);
 	}
 }

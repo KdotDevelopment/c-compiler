@@ -12,4 +12,4 @@ typedef struct code_gen_t {
     parser_t *parser;
 } code_gen_t;
 
-void code_generation(code_gen_t *code_gen);
+void code_generation(code_gen_t *code_gen, ast_node_t *node);

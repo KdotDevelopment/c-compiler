@@ -19,20 +19,31 @@ typedef struct lexer_t {
 	size_t line_num;
 	int8_t character;
 	size_t token_count;
+	size_t token_index;
 	token_t **tokens;
 } lexer_t;
 
 int lex(lexer_t *lexer);
 int clean_tokens(lexer_t *lexer);
 
-//Characters
+//Characters or Combinations
 enum {
 	T_PLUS,
 	T_MINUS,
 	T_STAR,
 	T_SLASH,
 	T_PERCENT,
-	T_EQUAL,
+	T_EQUALS,         // ==
+	T_NOT_EQUALS,     // !=
+	T_LESS_THAN,      // <
+	T_GREATER_THAN,   // >
+	T_LESS_EQUALS,    // <=
+	T_GREATER_EQUALS, // >=
+
+	//These do not have any precedences:
+
+	T_NOT,            // !
+	T_ASSIGN,         // =
 	T_IDENT,
 	T_SEMICOLON,
 	T_LPAREN,
@@ -46,7 +57,7 @@ enum {
 
 //Keywords
 enum {
-	K_NAME, //This is for user-made variable names
+	K_IDENT, //This is for user-made variable names
 	K_ASM, //extension
 	K_AUTO,
 	K_BREAK,

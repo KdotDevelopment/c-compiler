@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include <stdint.h>
 
 #include "parser.h"
 #include "lex.h"
 #include "codegen.h"
+#include "symbol.h"
 
 char buffer[24];
 char *get_file_name(char *full_name) {
@@ -47,11 +47,9 @@ int main(int argc, char *argv[]) {
 	parser.pos = 0;
 	parser.root_node = create_ast_leaf(AST_PROGRAM);
 
-	parse(&parser);
-
-	print_tree(parser.root_node, 0);
-
-	clean_tokens(&lexer);
+	symbol_table_t symbol_table;
+	symbol_table.next_free = 0;
+	parser.symbol_table = &symbol_table;
 
 	lexer.out_file = fopen(add_file_ext(get_file_name(argv[1]), ".s"), "w"); // w = writes to a file, clears first
 
@@ -59,18 +57,14 @@ int main(int argc, char *argv[]) {
 	fprintf(lexer.out_file, "section .text\n");
 	fprintf(lexer.out_file, "  main:\n");
 
-	code_gen_t code_gen;
-	code_gen.out = lexer.out_file;
-	code_gen.parser = &parser;
-	code_gen.reg_list[0] = "r8";
-	code_gen.reg_list[1] = "r9";
-	code_gen.reg_list[2] = "r10";
-	code_gen.reg_list[3] = "r11";
-	memset(code_gen.free_regs, 1, 4);
+	//Create stack
+	fprintf(lexer.out_file, "    push rbp\n");
+	fprintf(lexer.out_file, "    mov rbp, rsp\n");
 
-	code_generation(&code_gen);
-	//fprintf(lexer.out_file, "	movq $2, %%rax\n");
-	//fprintf(lexer.out_file, "	ret\n");
+	//Parsing handles code-gen on the go
+	parse(&parser);
+
+	clean_tokens(&lexer);
 
 	fclose(lexer.in_file);
 	fclose(lexer.out_file);
@@ -79,11 +73,12 @@ int main(int argc, char *argv[]) {
 }
 
 /*
-Basic return value in ASM (not valid anymore lol)
+Basic return value in ASM
 
-.globl main
-
-main:               ; label for "main" function
-	movq $2, %rax   ; move constant 2 into rax
-	ret             ; return rax
+global main
+section .text
+  main:             ; label for "main" function
+	mov rdi, 2      ; move constant 2 into rdi
+	mov rax, 60     ; set up syscall #60
+	syscall         ; return rdi
 */

@@ -1,16 +1,19 @@
 global main
 section .text
   main:
-    mov r8, 9
-    mov r9, 5
-    mov rax, r8
-    mov rbx, r9
-    div rbx
-    mov r9, rdx
-    mov r8, 4
-    mov rax, r8
-    mul r9
-    mov r9, rax
-    mov rdi, r9
+    push rbp
+    mov rbp, rsp
+    mov r8, 10
+    mov QWORD -8[rbp], r8
+    mov QWORD r9, -8[rbp]
+    mov r10, 2
+    mov r11, 7
+    mov rax, r11
+    mul r10
+    mov r10, rax
+    add r9, r10
+    mov QWORD -8[rbp], r9
+    mov QWORD r10, -8[rbp]
+    mov rdi, r10
     mov rax, 60
     syscall
