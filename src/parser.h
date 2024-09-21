@@ -6,10 +6,10 @@
 
 typedef struct ast_node_t {
 	int ast_type;
-	char *name;
 	struct ast_node_t *left;
 	struct ast_node_t *right;
 	struct ast_node_t *mid;
+	char **name;
 	union {
 		int int_value;
 		int symbol_id;
@@ -22,6 +22,14 @@ typedef struct parser_t {
 	ast_node_t *root_node;
 	symbol_table_t *symbol_table;
 } parser_t;
+
+enum {
+	P_NONE,
+	P_VOID,
+	P_INT,
+	P_CHAR,
+	P_SHORT
+};
 
 enum {
 	AST_PROGRAM = 1,
@@ -44,7 +52,10 @@ enum {
 	AST_LESS_EQUALS,
 	AST_IF,
 	AST_ELSE,
-	AST_BLOCK
+	AST_BLOCK,
+	AST_WHILE,
+	AST_FOR,
+	AST_FUNCTION
 };
 
 static char *ast_type_strings[] = {
@@ -69,7 +80,10 @@ static char *ast_type_strings[] = {
 	"LESS EQUALS",
 	"IF",
 	"ELSE",
-	"BLOCK"
+	"BLOCK",
+	"WHILE",
+	"FOR",
+	"FUNCTION"
 };
 
 ast_node_t *create_ast_node(int ast_type, ast_node_t *left, ast_node_t *right);
@@ -78,5 +92,6 @@ ast_node_t *create_ast_leaf(int ast_type);
 void parse(parser_t *parser);
 void print_tree(ast_node_t *root_node, int depth);
 ast_node_t *create_expression_ast(parser_t *parser, int ptp);
-ast_node_t *if_statement(parser_t *parser, token_t *current_token);
-ast_node_t *statement_block(parser_t *parser, token_t *current_token);
+ast_node_t *if_statement(parser_t *parser);
+ast_node_t *statement_block(parser_t *parser);
+ast_node_t *statement(parser_t *parser);

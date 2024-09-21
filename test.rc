@@ -1,5 +1,9 @@
-void {
-    int i = 10;
-    i = i + 2 * 7;
-    return i;
+void main() {
+    short x = 20;
+
+    if(x > 20) {
+        x = 200;
+    }
+    
+    return x;
 }

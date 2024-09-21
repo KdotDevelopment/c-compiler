@@ -42,7 +42,7 @@ enum {
 
 	//These do not have any precedences:
 
-	T_NOT,            // !
+	T_NOT,            // ! 11
 	T_ASSIGN,         // =
 	T_IDENT,
 	T_SEMICOLON,

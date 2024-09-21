@@ -59,6 +59,22 @@ int get_math_operator(int token, int line_num) {
 	}
 }
 
+int get_type(token_t *token) {
+	switch(token->keyword) {
+		case K_INT:
+			return P_INT;
+		case K_CHAR:
+			return P_CHAR;
+		case K_SHORT:
+			return P_SHORT;
+		case K_VOID:
+			return P_VOID;
+		default:
+			printf("Unknown type %d on line %d\n", token->keyword, token->line_num);
+			exit(1);
+	}
+}
+
 //see lex.h for the corresponding tokens (first are + - * / % == != < > <= >=)
 static int operator_precedences[] = {10, 10, 20, 20, 20, 30, 30, 40, 40, 40, 40};
 
@@ -141,20 +157,20 @@ ast_node_t *create_expression_ast(parser_t *parser, int ptp) {
 	return left;
 }
 
-ast_node_t *return_statement(parser_t *parser, token_t *current_token) {
+ast_node_t *return_statement(parser_t *parser) {
     ast_node_t *return_node = create_ast_leaf(AST_RETURN);
     parser->root_node->left = return_node;
 
     parser->pos++;
     return_node->left = create_expression_ast(parser, 0);
     if(return_node->left == NULL) {
-        printf("Expected expression after token return on line %d\n", current_token->line_num);
+        printf("Expected expression after token return on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
     }
 
 	return return_node;
 }
 
-ast_node_t *assignment_statement(parser_t *parser, token_t *current_token) {
+ast_node_t *assignment_statement(parser_t *parser) {
 	ast_node_t *assignment_node = create_ast_leaf(AST_ASSIGN);
 	parser->root_node->left = assignment_node;
 	ast_node_t *left;
@@ -168,7 +184,7 @@ ast_node_t *assignment_statement(parser_t *parser, token_t *current_token) {
 
 	right = create_ast_leaf(AST_LVALUE);
 	right->symbol_id = symbol_id;
-	right->name = parser->lexer->tokens[parser->pos]->ident_value;
+	right->name = (char **)parser->lexer->tokens[parser->pos]->ident_value;
 
 	parser->pos++;
 
@@ -186,25 +202,26 @@ ast_node_t *assignment_statement(parser_t *parser, token_t *current_token) {
 	return assignment_node;
 }
 
-ast_node_t *int_declaration(parser_t *parser, token_t *current_token) {
+ast_node_t *var_declaration(parser_t *parser) {
     ast_node_t *variable_node = create_ast_leaf(AST_INT);
     parser->root_node->left = variable_node;
+
+	int variable_type = get_type(parser->lexer->tokens[parser->pos]);
 
     parser->pos++; //from int to indent
 
 	if(parser->lexer->tokens[parser->pos]->token != T_IDENT) {
-		printf("Expected indentifier after token int on line %d\n", current_token->line_num);
+		printf("Expected indentifier after token int on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
 		exit(1);
 	}
-	variable_node->symbol_id = create_symbol(parser->lexer->tokens[parser->pos]->ident_value, parser->symbol_table);
+	variable_node->symbol_id = create_symbol(parser->lexer->tokens[parser->pos]->ident_value, variable_type, S_VARIABLE, parser->symbol_table);
 
 	parser->pos++; //from ident to assign or semi
 
 	if(parser->lexer->tokens[parser->pos]->token == T_SEMICOLON) return variable_node;
 	else if(parser->lexer->tokens[parser->pos]->token == T_ASSIGN) {
 		parser->pos--; //from assign to ident
-		variable_node->right = assignment_statement(parser, parser->lexer->tokens[parser->pos]);
-		//printf("Assignment on same line is not supported yet! (Line: %d)\n", parser->lexer->tokens[parser->pos]->line_num);
+		variable_node->right = assignment_statement(parser);
 	}else if(parser->lexer->tokens[parser->pos]->token == T_EOF) {
 		printf("Unexpected end of file, missing semicolon?\n");
 		exit(1);
@@ -213,11 +230,10 @@ ast_node_t *int_declaration(parser_t *parser, token_t *current_token) {
 		exit(1);
 	}
 
-    //variable_node->left = create_expression_ast(parser, 0);
 	return variable_node;
 }
 
-ast_node_t *statement_block(parser_t *parser, token_t *current_token) {
+ast_node_t *statement_block(parser_t *parser) {
 	//ast_node_t *block_node = create_ast_leaf(AST_BLOCK);
 	ast_node_t *left = NULL;
 	ast_node_t *current_node;
@@ -226,29 +242,16 @@ ast_node_t *statement_block(parser_t *parser, token_t *current_token) {
 
 	for(; parser->pos < parser->lexer->token_count; parser->pos++) {
 		token_t *current_token = parser->lexer->tokens[parser->pos];
+		
 		if(current_token == NULL) return NULL;
 		if(current_token->token == T_RSQUIRLY) {
 			if(left == NULL) return NULL;
-			parser->pos++;
+			//parser->pos++;
 			return left;
 		}
-		switch(current_token->keyword) {
-			case K_RETURN:
-				current_node = return_statement(parser, current_token);
-				break;
-			case K_INT:
-				current_node = int_declaration(parser, current_token);
-				break;
-			case K_IDENT:
-				current_node = assignment_statement(parser, current_token);
-				break;
-			case K_IF:
-				current_node = if_statement(parser, current_token);
-				break;
-			default:
-				printf("Unknown keyword\n");
-				exit(1);
-		}
+
+		current_node = statement(parser);
+
 		if(current_node) {
 			if(left == NULL) {
 				left = current_node;
@@ -259,14 +262,124 @@ ast_node_t *statement_block(parser_t *parser, token_t *current_token) {
 	}
 }
 
-ast_node_t *if_statement(parser_t *parser, token_t *current_token) {
+ast_node_t *while_statement(parser_t *parser) {
+	ast_node_t *while_node = create_ast_leaf(AST_WHILE);
+    parser->root_node->left = while_node;
+
+	parser->pos++; //if to (hopefully) '('
+
+	if(parser->lexer->tokens[parser->pos]->token != T_LPAREN) {
+		printf("Expected \'(\' after while statement on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	parser->pos++; // ( to condition
+
+	while_node->left = create_expression_ast(parser, 0);
+
+	parser->pos++; // ) to {
+
+	while_node->right = statement(parser); //statement to loop
+	
+	return while_node;
+}
+
+ast_node_t *for_statement(parser_t *parser) {
+	ast_node_t *for_node = create_ast_leaf(AST_FOR);
+    parser->root_node->left = for_node;
+
+	parser->pos++; //if to (hopefully) '('
+
+	if(parser->lexer->tokens[parser->pos]->token != T_LPAREN) {
+		printf("Expected \'(\' after for statement on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	parser->pos++; // ( to condition
+
+	if(parser->lexer->tokens[parser->pos]->token != T_SEMICOLON) { //sometimes you leave some parts empty
+		for_node->left = statement(parser); //pre-operation
+	}else {
+		for_node->left = NULL;
+	}
+	
+	if(parser->lexer->tokens[parser->pos]->token != T_SEMICOLON) {
+		printf("Expected semicolon in for loop on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	parser->pos++; //skip semicolon
+
+	for_node->right = create_ast_leaf(AST_WHILE);
+	for_node->right->left = create_expression_ast(parser, 0); //the expression (middle part) of the for loop
+
+	if(parser->lexer->tokens[parser->pos]->token != T_SEMICOLON) {
+		printf("Expected semicolon in for loop on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	parser->pos++; //skip semicolon
+
+	ast_node_t *post_operation = NULL;
+
+	if(parser->lexer->tokens[parser->pos]->token != T_RPAREN) { //sometimes you leave some parts empty
+		post_operation = statement(parser); //last statement in the for loop
+	}
+
+	parser->pos++; // ) -> compound statement
+
+	for_node->right->right = create_ast_leaf(AST_BLOCK);
+	for_node->right->right->left = statement(parser); //the block
+
+	for_node->right->right->right = post_operation;
+
+	return for_node;
+}
+
+ast_node_t *statement(parser_t *parser) {
+	if(parser->lexer->tokens[parser->pos]->token == T_LSQUIRLY) return statement_block(parser);
+
+	token_t *current_token = parser->lexer->tokens[parser->pos];
+	ast_node_t *current_node;
+		
+	if(current_token == NULL) return NULL;
+	
+	switch(current_token->keyword) {
+		case K_RETURN:
+			current_node = return_statement(parser);
+			break;
+		case K_CHAR:
+		case K_SHORT:
+		case K_INT:
+			current_node = var_declaration(parser);
+			break;
+		case K_IDENT:
+			current_node = assignment_statement(parser);
+			break;
+		case K_IF:
+			current_node = if_statement(parser);
+			break;
+		case K_WHILE:
+			current_node = while_statement(parser);
+			break;
+		case K_FOR:
+			current_node = for_statement(parser);
+			break;
+		default:
+			printf("Unknown keyword %d on line %d\n", current_token->keyword, current_token->line_num);
+			exit(1);
+	}
+	return current_node;
+}
+
+ast_node_t *if_statement(parser_t *parser) {
 	ast_node_t *if_node = create_ast_leaf(AST_IF);
     parser->root_node->left = if_node;
 
 	parser->pos++; //if to (hopefully) '('
 
 	if(parser->lexer->tokens[parser->pos]->token != T_LPAREN) {
-		printf("Expected \'(\' after if statement on line %d", current_token->line_num);
+		printf("Expected \'(\' after if statement on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
 		exit(1);
 	}
 
@@ -274,19 +387,61 @@ ast_node_t *if_statement(parser_t *parser, token_t *current_token) {
 
 	if_node->left = create_expression_ast(parser, 0);
 
-	if_node->mid = statement_block(parser, current_token);
+	parser->pos++; // ) to {
+
+	if_node->mid = statement(parser);
+	parser->pos++;
+	
+	int last_pos = parser->pos - 1; //don't consume next }
+
+	if(parser->lexer->tokens[parser->pos]->keyword == K_ELSE) {
+		parser->pos++;
+		if_node->right = statement(parser);
+	}else {
+		parser->pos = last_pos;
+		if_node->right = NULL;
+	}
+	return if_node;
 }
 
 //currently just a test
-ast_node_t *function(parser_t *parser, token_t *current_token) {
-	parser->pos++; //void -> {
+ast_node_t *function(parser_t *parser) {
+	ast_node_t *function_node = create_ast_leaf(AST_FUNCTION);
+	parser->pos++; //void -> name
+
+	if(parser->lexer->tokens[parser->pos]->keyword != K_IDENT) {
+		printf("Expected identifier after void declaration on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	function_node->name = (char **)parser->lexer->tokens[parser->pos]->ident_value;
+
+	parser->pos++; //name -> (
+
+	//arguments would go here
+
+	if(parser->lexer->tokens[parser->pos]->token != T_LPAREN) {
+		printf("Expected \'(\' after void identifier on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	parser->pos++; //( -> )
+
+	if(parser->lexer->tokens[parser->pos]->token != T_RPAREN) {
+		printf("Expected \')\' after void identifier on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+		exit(1);
+	}
+
+	parser->pos++; //) -> {
 	
 	if(parser->lexer->tokens[parser->pos]->token != T_LSQUIRLY) {
 		printf("Expected \'{\' after void declaration on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
 		exit(1);
 	}
 
-	return statement_block(parser, parser->lexer->tokens[parser->pos]);
+	function_node->left = statement(parser);
+
+	return function_node;
 }
 
 void parse(parser_t *parser) {
@@ -294,20 +449,23 @@ void parse(parser_t *parser) {
 		token_t *current_token = parser->lexer->tokens[parser->pos];
 		ast_node_t *current_node = NULL;
 		if(current_token == NULL) return;
+		if(current_token->token == T_EOF) return;
 		switch(current_token->keyword) {
 			case K_VOID:
-				current_node = function(parser, current_token);
+				current_node = function(parser);
 				break;
 			default:
-				printf("Not expecting execution code outside of a body\n");
+				printf("Not expecting execution code outside of a body (%d)\n", current_token->token);
 				exit(1);
 		}
 		if(current_node == NULL) continue;
+
 		print_tree(current_node, 0);
 
 		code_gen_t code_gen;
 		code_gen.out = parser->lexer->out_file;
 		code_gen.parser = parser;
+		code_gen.label_index = 0;
 		code_gen.reg_list[0] = "r8";
 		code_gen.reg_list[1] = "r9";
 		code_gen.reg_list[2] = "r10";
@@ -328,5 +486,6 @@ void print_tree(ast_node_t *root_node, int depth) {
 	if(depth > 0) printf("└──");
 	printf("%s - %d\n", ast_type_to_string(root_node->ast_type), root_node->int_value);
 	print_tree(root_node->left, depth + 1);
+	print_tree(root_node->mid, depth + 1);
 	print_tree(root_node->right, depth + 1);
 }

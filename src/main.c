@@ -56,10 +56,14 @@ int main(int argc, char *argv[]) {
 	fprintf(lexer.out_file, "global main\n");
 	fprintf(lexer.out_file, "section .text\n");
 	fprintf(lexer.out_file, "  main:\n");
+	fprintf(lexer.out_file, "    call _main\n");
+	fprintf(lexer.out_file, "    mov rdi, rax\n");
+	fprintf(lexer.out_file, "    mov rax, 60\n");
+	fprintf(lexer.out_file, "    syscall\n");
 
 	//Create stack
-	fprintf(lexer.out_file, "    push rbp\n");
-	fprintf(lexer.out_file, "    mov rbp, rsp\n");
+	//fprintf(lexer.out_file, "    push rbp\n");
+	//fprintf(lexer.out_file, "    mov rbp, rsp\n");
 
 	//Parsing handles code-gen on the go
 	parse(&parser);

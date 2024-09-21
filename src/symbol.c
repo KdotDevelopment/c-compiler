@@ -21,7 +21,7 @@ int next_symbol_pos(symbol_table_t *symbol_table) {
 	return p;
 }
 
-int create_symbol(char *name, symbol_table_t *symbol_table) {
+int create_symbol(char *name, int type, int structure_type, symbol_table_t *symbol_table) {
 	int symbol;
 
 	//if it already exists
@@ -32,5 +32,7 @@ int create_symbol(char *name, symbol_table_t *symbol_table) {
 
 	symbol = next_symbol_pos(symbol_table);
 	symbol_table->table[symbol].name = strdup(name);
+	symbol_table->table[symbol].type = type;
+	symbol_table->table[symbol].structure_type = structure_type;
 	return symbol;
 }

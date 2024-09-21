@@ -1,5 +1,7 @@
 #include "codegen.h"
 
+#include <string.h>
+
 int alloc_register(code_gen_t *code_gen) {
 	for(int i = 0; i < 4; i++) {
 		if(code_gen->free_regs[i]) {
@@ -14,6 +16,27 @@ int alloc_register(code_gen_t *code_gen) {
 void free_register(int reg, code_gen_t *code_gen) {
 	if(code_gen->free_regs[reg] != 0) return;
 	code_gen->free_regs[reg] = 1;
+}
+
+void free_all_registers(code_gen_t *code_gen) {
+	memset(code_gen->free_regs, 1, 4);
+}
+
+int get_type_size(int type) {
+	switch(type) {
+		case P_VOID:
+		case P_NONE:
+			return 0;
+		case P_CHAR:
+			return 1;
+		case P_SHORT:
+			return 2;
+		case P_INT:
+			return 4;
+		default:
+			printf("Could not get type size\n");
+			exit(1);
+	}
 }
 
 //puts an int literal into a register
@@ -162,12 +185,16 @@ int cg_expression(ast_node_t *root_node, code_gen_t *code_gen) {
 	}
 }
 
+void cg_label(int id, code_gen_t *code_gen) {
+	fprintf(code_gen->out, "  L%d:\n", id);
+}
+
 void generate_return(ast_node_t *return_node, code_gen_t *code_gen) {
 	int result_reg = cg_expression(return_node->left, code_gen);
 	if(result_reg < 0) exit(1);
-	fprintf(code_gen->out, "    mov rdi, %s\n", code_gen->reg_list[result_reg]);
-	fprintf(code_gen->out, "    mov rax, 60\n");
-	fprintf(code_gen->out, "    syscall\n");
+	fprintf(code_gen->out, "    mov rax, %s\n", code_gen->reg_list[result_reg]);
+	fprintf(code_gen->out, "    pop rbp\n");
+	fprintf(code_gen->out, "    ret\n");
 }
 
 void generate_assignment(ast_node_t *assignment_node, code_gen_t *code_gen) {
@@ -175,6 +202,63 @@ void generate_assignment(ast_node_t *assignment_node, code_gen_t *code_gen) {
 	ast_node_t *expression_node = assignment_node->left;
 	int expression_reg = cg_expression(expression_node, code_gen);
 	cg_assign_variable(symbol_id, expression_reg, code_gen);
+}
+
+void generate_ifelse(ast_node_t *if_node, code_gen_t *code_gen) {
+	int condition_reg = cg_expression(if_node->left, code_gen);
+	int label_false = code_gen->label_index++;
+	int label_end = code_gen->label_index++;
+	
+	fprintf(code_gen->out, "    cmp %s, 0\n", code_gen->reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    je L%d\n", label_false);
+	code_generation(code_gen, if_node->mid);
+	free_all_registers(code_gen);
+	fprintf(code_gen->out, "    jmp L%d\n", label_end);
+	cg_label(label_false, code_gen);
+	code_generation(code_gen, if_node->right);
+	fprintf(code_gen->out, "    jmp L%d\n", label_end);
+	cg_label(label_end, code_gen);
+}
+
+void generate_if(ast_node_t *if_node, code_gen_t *code_gen) {
+	if(if_node->right != NULL) { //if an else statement exists
+		generate_ifelse(if_node, code_gen);
+		return;
+	}
+
+	int condition_reg = cg_expression(if_node->left, code_gen);
+	int label_end = code_gen->label_index++;
+	
+	fprintf(code_gen->out, "    cmp %s, 0\n", code_gen->reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    je L%d\n", label_end);
+	code_generation(code_gen, if_node->mid);
+	free_all_registers(code_gen);
+	fprintf(code_gen->out, "    jmp L%d\n", label_end);
+	cg_label(label_end, code_gen);
+}
+
+void generate_while(ast_node_t *while_node, code_gen_t *code_gen) {
+	int label_start = code_gen->label_index++;
+	int label_end = code_gen->label_index++;
+
+	fprintf(code_gen->out, "    jmp L%d\n", label_start);
+	cg_label(label_start, code_gen);
+
+	code_generation(code_gen, while_node->right); //the body of the while loop
+
+	int condition_reg = cg_expression(while_node->left, code_gen); //evaluate the expression
+	fprintf(code_gen->out, "    cmp %s, 0\n", code_gen->reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    jne L%d\n", label_start); //loop back if condition met
+	fprintf(code_gen->out, "    je L%d\n", label_end); //exit if condition not met
+
+	cg_label(label_end, code_gen);
+}
+
+void generate_function(ast_node_t *function_node, code_gen_t *code_gen) {
+	fprintf(code_gen->out, "  _%s:\n", (char *)function_node->name);
+	fprintf(code_gen->out, "    push rbp\n");
+	fprintf(code_gen->out, "    mov rbp, rsp\n");
+	code_generation(code_gen, function_node->left);
 }
 
 void code_generation(code_gen_t *code_gen, ast_node_t *node) {
@@ -189,16 +273,36 @@ void code_generation(code_gen_t *code_gen, ast_node_t *node) {
 		case AST_INT:
 			if(node->right == NULL) break;
 			generate_assignment(node->right, code_gen);
+			free_all_registers(code_gen);
 			break;
 		case AST_ASSIGN:
 			generate_assignment(node, code_gen);
+			free_all_registers(code_gen);
 			break;
 		case AST_BLOCK:
-			code_generation(code_gen, node->left);
-			code_generation(code_gen, node->right);
+			if(node->left != NULL) code_generation(code_gen, node->left);
+			if(node->right != NULL) code_generation(code_gen, node->right);
+			free_all_registers(code_gen);
+			break;
+		case AST_IF:
+			generate_if(node, code_gen);
+			free_all_registers(code_gen);
+			break;
+		case AST_WHILE:
+			generate_while(node, code_gen);
+			free_all_registers(code_gen);
+			break;
+		case AST_FOR: //Same as block but left in as formaliry
+			if(node->left != NULL) code_generation(code_gen, node->left);
+			if(node->right != NULL) code_generation(code_gen, node->right);
+			free_all_registers(code_gen);
+			break;
+		case AST_FUNCTION:
+			generate_function(node, code_gen);
+			free_all_registers(code_gen);
 			break;
 		default:
-			printf("Unknown syntax: %d\n", node->ast_type);
+			printf("Unknown AST type: %d\n", node->ast_type);
 			exit(1);
 	}
 }
