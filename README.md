@@ -1,5 +1,2 @@
 # What Can It Do?
-It can currently parse and create code for return expressions.\
-For example: return 9 % 3 * 4 + 20;\
-This will be converted to each individual math operation in x86 assembly with zero optimizations.\
-It is returned via a unix syscall.
+The compiler can currently do basic comparisons, if/while/for statements, integer variables, and return to the linux kernel. It can take into account operator precedence when evaluating an expression. It currently generates into x86 assembly (intel syntax) and has no built-in assembler or linker (yet). The main function must be initialized as a void and return an integer value. Right now, char, short and int are all aliases for int64_t types, however the compiler does not yet support negative numbers.
