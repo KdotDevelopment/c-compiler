@@ -1,9 +1,6 @@
 {
 	"files.associations": {
-		"stdio.h": "c",
-		"*.rc": "c",
-		"compare": "c",
-		"type_traits": "c"
+		"*.rc": "c"
 	},
 	"makefile.configureOnOpen": true
 }

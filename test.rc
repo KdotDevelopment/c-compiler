@@ -1,8 +1,13 @@
+long test() {
+    return 4;
+}
+
 int main() {
     char x = 12;
-    short y = 10;
+    int y = 10;
+    int a = 3;
 
-    int z = x + y;
+    int z = ((x + y) * a) + test();
     
     return z;
 }

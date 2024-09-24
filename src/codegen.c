@@ -107,7 +107,7 @@ int cg_assign_variable(int id, int reg, code_gen_t *code_gen) {
 	char *reg_name;
 	char *size_name;
 
-	//Adds 1 to odd numbered stack pos to stay byte-aligned
+	//Adds keeps the memory addresses byte aligned to their respective data type sizes
 
 	if(size == 1) {
 		reg_name = breg_list[reg];
@@ -121,17 +121,17 @@ int cg_assign_variable(int id, int reg, code_gen_t *code_gen) {
 	if(size == 4) {
 		reg_name = dreg_list[reg];
 		size_name = "DWORD";
-		code_gen->stack_pos += code_gen->stack_pos % 2;
+		code_gen->stack_pos += 4 - 1 - (code_gen->stack_pos + 4 - 1) % 4;
 	}
 	if(size == 8) {
 		reg_name = reg_list[reg];
 		size_name = "QWORD";
-		code_gen->stack_pos += code_gen->stack_pos % 2;
+		code_gen->stack_pos += 8 - 1 - (code_gen->stack_pos + 8 - 1) % 8;
 	}
 
 	get_symbol(id, code_gen->parser->symbol_table)->stack_pos = code_gen->stack_pos;
 
-	fprintf(code_gen->out, "    mov %s -%d[rbp], %s\n", size_name, code_gen->stack_pos, reg_name);
+	fprintf(code_gen->out, "    mov %s -%ld[rbp], %s\n", size_name, code_gen->stack_pos, reg_name);
 
 	return reg;
 }
@@ -257,7 +257,10 @@ int cg_expression(ast_node_t *root_node, code_gen_t *code_gen) {
 		case AST_IDENT:
 			return cg_retrieve_variable(root_node->symbol_id, code_gen);
 		case AST_CALL:
-			return cg_call(root_node->name, code_gen);
+			fprintf(code_gen->out, "    push %s\n", reg_list[r1]); //the function call might override our working register
+			int reg = cg_call(root_node->name, code_gen);
+			fprintf(code_gen->out, "    pop %s\n", reg_list[r1]);
+			return reg;
 		case AST_WIDEN:
 			return r1;
 		default:
@@ -375,7 +378,7 @@ void code_generation(code_gen_t *code_gen, ast_node_t *node) {
 			generate_while(node, code_gen);
 			free_all_registers(code_gen);
 			break;
-		case AST_FOR: //Same as block but left in as formaliry
+		case AST_FOR: //Same as block but left in as formality
 			if(node->left != NULL) code_generation(code_gen, node->left);
 			if(node->right != NULL) code_generation(code_gen, node->right);
 			free_all_registers(code_gen);

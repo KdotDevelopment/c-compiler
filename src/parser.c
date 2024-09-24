@@ -617,7 +617,9 @@ void parse(parser_t *parser) {
 		if(current_token->token == T_EOF) return;
 		switch(current_token->keyword) {
 			case K_VOID:
+			case K_LONG:
 			case K_INT:
+			case K_SHORT:
 			case K_CHAR:
 				current_node = function(parser);
 				break;
