@@ -29,7 +29,7 @@ int skip_char(lexer_t *lexer) {
 	return c;
 }
 
-int scan_int(lexer_t *lexer) {
+int64_t scan_int(lexer_t *lexer) {
 	int k, val = 0;
 
 	while((k = chr_pos("0123456789", lexer->character)) >= 0) {
@@ -97,6 +97,18 @@ void get_keyword(token_t *token) { //takes the ident string and converts it to a
 	else if(!strcmp(token->ident_value, "void")) token->keyword = K_VOID;
 	else if(!strcmp(token->ident_value, "volatile")) token->keyword = K_VOLATILE;
 	else if(!strcmp(token->ident_value, "while")) token->keyword = K_WHILE;
+
+	// NOT OFFICIAL
+	/*else if(!strcmp(token->ident_value, "u0")) token->keyword = K_VOID;
+	else if(!strcmp(token->ident_value, "u8")) token->keyword = K_CHAR;
+	else if(!strcmp(token->ident_value, "u16")) token->keyword = K_SHORT;
+	else if(!strcmp(token->ident_value, "u32")) token->keyword = K_INT;
+	else if(!strcmp(token->ident_value, "u64")) token->keyword = K_LONG;
+	else if(!strcmp(token->ident_value, "i8")) token->keyword = K_CHAR;
+	else if(!strcmp(token->ident_value, "i16")) token->keyword = K_SHORT;
+	else if(!strcmp(token->ident_value, "i32")) token->keyword = K_INT;
+	else if(!strcmp(token->ident_value, "i64")) token->keyword = K_LONG;*/
+
 	else token->keyword = K_IDENT; //Must be a user defined variable name
 }
 

@@ -11,6 +11,7 @@ typedef struct code_gen_t {
     FILE *out;
     size_t label_index;
     parser_t *parser;
+    size_t stack_pos;
 } code_gen_t;
 
 void code_generation(code_gen_t *code_gen, ast_node_t *node);

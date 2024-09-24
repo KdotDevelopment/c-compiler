@@ -11,6 +11,7 @@ typedef struct symbol_table_entry_t {
 	char *name;
     int type; //primitive type
     int structure_type; //variable, function, etc
+    int stack_pos;
 } symbol_table_entry_t;
 
 typedef struct symbol_table_t {
@@ -21,3 +22,4 @@ typedef struct symbol_table_t {
 int find_symbol(char *s, symbol_table_t *symbol_table);
 int next_symbol_pos(symbol_table_t *symbol_table);
 int create_symbol(char *name, int type, int structure_type, symbol_table_t *symbol_table);
+symbol_table_entry_t *get_symbol(int index, symbol_table_t *symbol_table);

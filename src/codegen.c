@@ -2,6 +2,15 @@
 
 #include <string.h>
 
+//longs (8)
+static char *reg_list[] = { "r8", "r9", "r10", "r11" };
+//ints (4)
+static char *dreg_list[] = { "r8d", "r9d", "r10d", "r11d" };
+//shorts (2)
+static char *wreg_list[] = { "r8w", "r9w", "r10w", "r11w" };
+//chars (1)
+static char *breg_list[] = { "r8b", "r9b", "r10b", "r11b" };
+
 int alloc_register(code_gen_t *code_gen) {
 	for(int i = 0; i < 4; i++) {
 		if(code_gen->free_regs[i]) {
@@ -27,12 +36,18 @@ int get_type_size(int type) {
 		case P_VOID:
 		case P_NONE:
 			return 0;
+		case P_UCHAR:
 		case P_CHAR:
 			return 1;
+		case P_USHORT:
 		case P_SHORT:
 			return 2;
+		case P_UINT:
 		case P_INT:
 			return 4;
+		case P_ULONG:
+		case P_LONG:
+			return 8;
 		default:
 			printf("Could not get type size\n");
 			exit(1);
@@ -42,107 +57,169 @@ int get_type_size(int type) {
 //puts an int literal into a register
 int cg_load(int value, code_gen_t *code_gen) {
 	int reg = alloc_register(code_gen);
-	fprintf(code_gen->out, "    mov %s, %d\n", code_gen->reg_list[reg], value);
+	fprintf(code_gen->out, "    mov %s, %d\n", reg_list[reg], value);
 	return reg;
 }
 
 int cg_add(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    add %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    add %s, %s\n", reg_list[r1], reg_list[r2]);
 	free_register(r2, code_gen);
 	return r1;
 }
 
 int cg_sub(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    sub %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    sub %s, %s\n", reg_list[r1], reg_list[r2]);
 	free_register(r2, code_gen);
 	return r1;
 }
 
 int cg_mul(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    mov rax, %s\n", code_gen->reg_list[r2]);
-	fprintf(code_gen->out, "    mul %s\n", code_gen->reg_list[r1]);
-	fprintf(code_gen->out, "    mov %s, rax\n", code_gen->reg_list[r1]);
+	fprintf(code_gen->out, "    mov rax, %s\n", reg_list[r2]);
+	fprintf(code_gen->out, "    mul %s\n", reg_list[r1]);
+	fprintf(code_gen->out, "    mov %s, rax\n", reg_list[r1]);
 	free_register(r2, code_gen);
 	return r1;
 }
 
 int cg_div(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    mov rax, %s\n", code_gen->reg_list[r1]);
-	fprintf(code_gen->out, "    mov rbx, %s\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    mov rax, %s\n", reg_list[r1]);
+	fprintf(code_gen->out, "    mov rbx, %s\n", reg_list[r2]);
 	fprintf(code_gen->out, "    div rbx\n");
-	fprintf(code_gen->out, "    mov %s, rax ; rax = quotient from div\n", code_gen->reg_list[r2]); //rax = quotient
+	fprintf(code_gen->out, "    mov %s, rax ; rax = quotient from div\n", reg_list[r2]); //rax = quotient
 	free_register(r1, code_gen);
 	return r2;
 }
 
 int cg_mod(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    mov rax, %s\n", code_gen->reg_list[r1]);
-	fprintf(code_gen->out, "    mov rbx, %s\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    mov rax, %s\n", reg_list[r1]);
+	fprintf(code_gen->out, "    mov rbx, %s\n", reg_list[r2]);
 	fprintf(code_gen->out, "    div rbx\n");
-	fprintf(code_gen->out, "    mov %s, rdx ; rdx = remainder from div\n", code_gen->reg_list[r2]); //rdx = remainder
+	fprintf(code_gen->out, "    mov %s, rdx ; rdx = remainder from div\n", reg_list[r2]); //rdx = remainder
 	free_register(r1, code_gen);
 	return r2;
 }
 
 //puts a value from register into the stack
 int cg_assign_variable(int id, int reg, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    mov QWORD -%d[rbp], %s\n", (id + 1) * 8, code_gen->reg_list[reg]); // * 8 because it is a QWORD (8 bytes)
+	int size = get_type_size(get_symbol(id, code_gen->parser->symbol_table)->type);
+	code_gen->stack_pos += size;
+
+	char *reg_name;
+	char *size_name;
+
+	//Adds 1 to odd numbered stack pos to stay byte-aligned
+
+	if(size == 1) {
+		reg_name = breg_list[reg];
+		size_name = "BYTE";
+	}
+	if(size == 2) {
+		reg_name = wreg_list[reg];
+		size_name = "WORD";
+		code_gen->stack_pos += code_gen->stack_pos % 2;
+	}
+	if(size == 4) {
+		reg_name = dreg_list[reg];
+		size_name = "DWORD";
+		code_gen->stack_pos += code_gen->stack_pos % 2;
+	}
+	if(size == 8) {
+		reg_name = reg_list[reg];
+		size_name = "QWORD";
+		code_gen->stack_pos += code_gen->stack_pos % 2;
+	}
+
+	get_symbol(id, code_gen->parser->symbol_table)->stack_pos = code_gen->stack_pos;
+
+	fprintf(code_gen->out, "    mov %s -%d[rbp], %s\n", size_name, code_gen->stack_pos, reg_name);
+
 	return reg;
 }
 
 //puts value from stack into register
 int cg_retrieve_variable(int id, code_gen_t *code_gen) {
 	int reg = alloc_register(code_gen);
-	fprintf(code_gen->out, "    mov QWORD %s, -%d[rbp]\n", code_gen->reg_list[reg], (id + 1) * 8); // * 8 because it is a QWORD (8 bytes)
+	int size = get_type_size(get_symbol(id, code_gen->parser->symbol_table)->type);
+	int pos = get_symbol(id, code_gen->parser->symbol_table)->stack_pos;
+
+	char *reg_name;
+	char *size_name;
+
+	if(size == 1) {
+		reg_name = breg_list[reg];
+		size_name = "BYTE";
+	}
+	if(size == 2) {
+		reg_name = wreg_list[reg];
+		size_name = "WORD";
+	}
+	if(size == 4) {
+		reg_name = dreg_list[reg];
+		size_name = "DWORD";
+	}
+	if(size == 8) {
+		reg_name = reg_list[reg];
+		size_name = "QWORD";
+	}
+
+	fprintf(code_gen->out, "    mov %s, %s -%d[rbp]\n", reg_name, size_name, pos);
+
 	return reg;
 }
 
 int cg_equals(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    cmp %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    cmp %s, %s\n", reg_list[r1], reg_list[r2]);
 	fprintf(code_gen->out, "    setz al\n");
-	fprintf(code_gen->out, "    movzx %s, al\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    movzx %s, al\n", reg_list[r2]);
 	free_register(r1, code_gen);
 	return r2;
 }
 
 int cg_not_equals(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    cmp %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    cmp %s, %s\n", reg_list[r1], reg_list[r2]);
 	fprintf(code_gen->out, "    setne al\n");
-	fprintf(code_gen->out, "    movzx %s, al\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    movzx %s, al\n", reg_list[r2]);
 	free_register(r1, code_gen);
 	return r2;
 }
 
 int cg_less_than(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    cmp %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    cmp %s, %s\n", reg_list[r1], reg_list[r2]);
 	fprintf(code_gen->out, "    setl al\n");
-	fprintf(code_gen->out, "    movzx %s, al\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    movzx %s, al\n", reg_list[r2]);
 	free_register(r1, code_gen);
 	return r2;
 }
 
 int cg_less_equals(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    cmp %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    cmp %s, %s\n", reg_list[r1], reg_list[r2]);
 	fprintf(code_gen->out, "    setle al\n");
-	fprintf(code_gen->out, "    movzx %s, al\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    movzx %s, al\n", reg_list[r2]);
 	free_register(r1, code_gen);
 	return r2;
 }
 
 int cg_greater_than(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    cmp %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    cmp %s, %s\n", reg_list[r1], reg_list[r2]);
 	fprintf(code_gen->out, "    setg al\n");
-	fprintf(code_gen->out, "    movzx %s, al\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    movzx %s, al\n", reg_list[r2]);
 	free_register(r1, code_gen);
 	return r2;
 }
 
 int cg_greater_equals(int r1, int r2, code_gen_t *code_gen) {
-	fprintf(code_gen->out, "    cmp %s, %s\n", code_gen->reg_list[r1], code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    cmp %s, %s\n", reg_list[r1], reg_list[r2]);
 	fprintf(code_gen->out, "    setge al\n");
-	fprintf(code_gen->out, "    movzx %s, al\n", code_gen->reg_list[r2]);
+	fprintf(code_gen->out, "    movzx %s, al\n", reg_list[r2]);
 	free_register(r1, code_gen);
 	return r2;
+}
+
+int cg_call(char *name, code_gen_t *code_gen) {
+	int reg = alloc_register(code_gen);
+	fprintf(code_gen->out, "    call _%s\n", (char *)name);
+	fprintf(code_gen->out, "    mov %s, rax\n", reg_list[reg]); //takes the return value of the function
+	return reg;
 }
 
 int cg_expression(ast_node_t *root_node, code_gen_t *code_gen) {
@@ -179,6 +256,10 @@ int cg_expression(ast_node_t *root_node, code_gen_t *code_gen) {
 			return cg_load(root_node->int_value, code_gen);
 		case AST_IDENT:
 			return cg_retrieve_variable(root_node->symbol_id, code_gen);
+		case AST_CALL:
+			return cg_call(root_node->name, code_gen);
+		case AST_WIDEN:
+			return r1;
 		default:
 			printf("Unknown operator %d\n", root_node->ast_type);
 			exit(1);
@@ -192,7 +273,8 @@ void cg_label(int id, code_gen_t *code_gen) {
 void generate_return(ast_node_t *return_node, code_gen_t *code_gen) {
 	int result_reg = cg_expression(return_node->left, code_gen);
 	if(result_reg < 0) exit(1);
-	fprintf(code_gen->out, "    mov rax, %s\n", code_gen->reg_list[result_reg]);
+	fprintf(code_gen->out, "    mov rax, %s\n", reg_list[result_reg]);
+	fprintf(code_gen->out, "    mov rsp, rbp\n");
 	fprintf(code_gen->out, "    pop rbp\n");
 	fprintf(code_gen->out, "    ret\n");
 }
@@ -209,7 +291,7 @@ void generate_ifelse(ast_node_t *if_node, code_gen_t *code_gen) {
 	int label_false = code_gen->label_index++;
 	int label_end = code_gen->label_index++;
 	
-	fprintf(code_gen->out, "    cmp %s, 0\n", code_gen->reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    cmp %s, 0\n", reg_list[condition_reg]); //compare condition to zero
 	fprintf(code_gen->out, "    je L%d\n", label_false);
 	code_generation(code_gen, if_node->mid);
 	free_all_registers(code_gen);
@@ -229,7 +311,7 @@ void generate_if(ast_node_t *if_node, code_gen_t *code_gen) {
 	int condition_reg = cg_expression(if_node->left, code_gen);
 	int label_end = code_gen->label_index++;
 	
-	fprintf(code_gen->out, "    cmp %s, 0\n", code_gen->reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    cmp %s, 0\n", reg_list[condition_reg]); //compare condition to zero
 	fprintf(code_gen->out, "    je L%d\n", label_end);
 	code_generation(code_gen, if_node->mid);
 	free_all_registers(code_gen);
@@ -247,7 +329,7 @@ void generate_while(ast_node_t *while_node, code_gen_t *code_gen) {
 	code_generation(code_gen, while_node->right); //the body of the while loop
 
 	int condition_reg = cg_expression(while_node->left, code_gen); //evaluate the expression
-	fprintf(code_gen->out, "    cmp %s, 0\n", code_gen->reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    cmp %s, 0\n", reg_list[condition_reg]); //compare condition to zero
 	fprintf(code_gen->out, "    jne L%d\n", label_start); //loop back if condition met
 	fprintf(code_gen->out, "    je L%d\n", label_end); //exit if condition not met
 
@@ -258,6 +340,7 @@ void generate_function(ast_node_t *function_node, code_gen_t *code_gen) {
 	fprintf(code_gen->out, "  _%s:\n", (char *)function_node->name);
 	fprintf(code_gen->out, "    push rbp\n");
 	fprintf(code_gen->out, "    mov rbp, rsp\n");
+	fprintf(code_gen->out, "    sub rsp, 64\n");
 	code_generation(code_gen, function_node->left);
 }
 
@@ -299,6 +382,10 @@ void code_generation(code_gen_t *code_gen, ast_node_t *node) {
 			break;
 		case AST_FUNCTION:
 			generate_function(node, code_gen);
+			free_all_registers(code_gen);
+			break;
+		case AST_CALL:
+			cg_call(node->name, code_gen);
 			free_all_registers(code_gen);
 			break;
 		default:

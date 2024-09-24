@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
 
 	lexer_t lexer;
 
+
 	if((lexer.in_file = fopen(argv[1], "r")) == NULL) {
 		printf("Unable to open file: %s\n", argv[1]);
 		return 1;
@@ -48,6 +49,7 @@ int main(int argc, char *argv[]) {
 	parser.root_node = create_ast_leaf(AST_PROGRAM);
 
 	symbol_table_t symbol_table;
+	//memset(symbol_table.table, 0, NUM_SYMBOLS * sizeof(symbol_table_entry_t));
 	symbol_table.next_free = 0;
 	parser.symbol_table = &symbol_table;
 
@@ -56,14 +58,14 @@ int main(int argc, char *argv[]) {
 	fprintf(lexer.out_file, "global main\n");
 	fprintf(lexer.out_file, "section .text\n");
 	fprintf(lexer.out_file, "  main:\n");
+	//fprintf(lexer.out_file, "    push rbp\n");
+	//fprintf(lexer.out_file, "    mov rbp, rsp\n");
 	fprintf(lexer.out_file, "    call _main\n");
 	fprintf(lexer.out_file, "    mov rdi, rax\n");
 	fprintf(lexer.out_file, "    mov rax, 60\n");
 	fprintf(lexer.out_file, "    syscall\n");
 
 	//Create stack
-	//fprintf(lexer.out_file, "    push rbp\n");
-	//fprintf(lexer.out_file, "    mov rbp, rsp\n");
 
 	//Parsing handles code-gen on the go
 	parse(&parser);

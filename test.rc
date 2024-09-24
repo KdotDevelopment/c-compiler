@@ -1,9 +1,8 @@
-void main() {
-    short x = 20;
+int main() {
+    char x = 12;
+    short y = 10;
 
-    if(x > 20) {
-        x = 200;
-    }
+    int z = x + y;
     
-    return x;
+    return z;
 }

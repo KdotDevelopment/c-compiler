@@ -8,20 +8,17 @@ section .text
   _main:
     push rbp
     mov rbp, rsp
-    mov r8, 20
-    mov QWORD -8[rbp], r8
-    mov QWORD r8, -8[rbp]
-    mov r9, 20
-    cmp r8, r9
-    setg al
-    movzx r9, al
-    cmp r9, 0
-    je L0
-    mov r8, 200
-    mov QWORD -8[rbp], r8
-    jmp L0
-  L0:
-    mov QWORD r8, -8[rbp]
+    sub rsp, 64
+    mov r8, 12
+    mov BYTE -1[rbp], r8b
+    mov r8, 10
+    mov WORD -4[rbp], r8w
+    mov r8b, BYTE -1[rbp]
+    mov r9w, WORD -4[rbp]
+    add r8, r9
+    mov DWORD -8[rbp], r8d
+    mov r8d, DWORD -8[rbp]
     mov rax, r8
+    mov rsp, rbp
     pop rbp
     ret

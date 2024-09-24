@@ -12,6 +12,10 @@ int find_symbol(char *s, symbol_table_t *symbol_table) {
 	return -1;
 }
 
+symbol_table_entry_t *get_symbol(int index, symbol_table_t *symbol_table) {
+	return &symbol_table->table[index];
+}
+
 int next_symbol_pos(symbol_table_t *symbol_table) {
 	int p;
 	if((p = symbol_table->next_free++) >= NUM_SYMBOLS) {
@@ -34,5 +38,6 @@ int create_symbol(char *name, int type, int structure_type, symbol_table_t *symb
 	symbol_table->table[symbol].name = strdup(name);
 	symbol_table->table[symbol].type = type;
 	symbol_table->table[symbol].structure_type = structure_type;
+	symbol_table->table[symbol].stack_pos = 0;
 	return symbol;
 }
