@@ -101,8 +101,12 @@ int cg_mod(int r1, int r2, code_gen_t *code_gen) {
 
 //puts a value from register into the stack
 int cg_assign_variable(int id, int reg, code_gen_t *code_gen) {
+	int location;
+
 	int size = get_type_size(get_symbol(id, code_gen->parser->symbol_table)->type);
-	code_gen->stack_pos += size;
+	if(get_symbol(id, code_gen->parser->symbol_table)->stack_pos == -1) {
+		code_gen->stack_pos += size;
+	}	
 
 	char *reg_name;
 	char *size_name;
@@ -112,26 +116,46 @@ int cg_assign_variable(int id, int reg, code_gen_t *code_gen) {
 	if(size == 1) {
 		reg_name = breg_list[reg];
 		size_name = "BYTE";
+		if(get_symbol(id, code_gen->parser->symbol_table)->stack_pos == -1) {
+			location = code_gen->stack_pos;
+		}
 	}
 	if(size == 2) {
 		reg_name = wreg_list[reg];
 		size_name = "WORD";
-		code_gen->stack_pos += code_gen->stack_pos % 2;
+		if(get_symbol(id, code_gen->parser->symbol_table)->stack_pos == -1) {
+			code_gen->stack_pos += code_gen->stack_pos % 2;
+			location = code_gen->stack_pos;
+		}
 	}
 	if(size == 4) {
 		reg_name = dreg_list[reg];
 		size_name = "DWORD";
-		code_gen->stack_pos += 4 - 1 - (code_gen->stack_pos + 4 - 1) % 4;
+		if(get_symbol(id, code_gen->parser->symbol_table)->stack_pos == -1) {
+			code_gen->stack_pos += 4 - 1 - (code_gen->stack_pos + 4 - 1) % 4;
+			location = code_gen->stack_pos;
+		}
 	}
 	if(size == 8) {
 		reg_name = reg_list[reg];
 		size_name = "QWORD";
-		code_gen->stack_pos += 8 - 1 - (code_gen->stack_pos + 8 - 1) % 8;
+		if(get_symbol(id, code_gen->parser->symbol_table)->stack_pos == -1) {
+			code_gen->stack_pos += 8 - 1 - (code_gen->stack_pos + 8 - 1) % 8;
+			location = code_gen->stack_pos;
+		}
 	}
 
-	get_symbol(id, code_gen->parser->symbol_table)->stack_pos = code_gen->stack_pos;
+	if(get_symbol(id, code_gen->parser->symbol_table)->stack_pos == -1) {
+		get_symbol(id, code_gen->parser->symbol_table)->stack_pos = code_gen->stack_pos;
+	}else {
+		location = get_symbol(id, code_gen->parser->symbol_table)->stack_pos;
+	}
 
-	fprintf(code_gen->out, "    mov %s -%ld[rbp], %s\n", size_name, code_gen->stack_pos, reg_name);
+	fprintf(code_gen->out, "    mov %s -%d[rbp], %s", size_name, location, reg_name);
+	if(code_gen->parser->add_debug_comments) {
+		fprintf(code_gen->out, " ; [Assign] ID: %s", get_symbol(id, code_gen->parser->symbol_table)->name);
+	}
+	fprintf(code_gen->out, "\n");
 
 	return reg;
 }
@@ -162,7 +186,11 @@ int cg_retrieve_variable(int id, code_gen_t *code_gen) {
 		size_name = "QWORD";
 	}
 
-	fprintf(code_gen->out, "    mov %s, %s -%d[rbp]\n", reg_name, size_name, pos);
+	fprintf(code_gen->out, "    mov %s, %s -%d[rbp]", reg_name, size_name, pos);
+	if(code_gen->parser->add_debug_comments) {
+		fprintf(code_gen->out, " ; [Retrieve] ID: %s", get_symbol(id, code_gen->parser->symbol_table)->name);
+	}
+	fprintf(code_gen->out, "\n");
 
 	return reg;
 }
@@ -332,7 +360,13 @@ void generate_while(ast_node_t *while_node, code_gen_t *code_gen) {
 	code_generation(code_gen, while_node->right); //the body of the while loop
 
 	int condition_reg = cg_expression(while_node->left, code_gen); //evaluate the expression
-	fprintf(code_gen->out, "    cmp %s, 0\n", reg_list[condition_reg]); //compare condition to zero
+	fprintf(code_gen->out, "    cmp %s, 0", reg_list[condition_reg]); //compare condition to zero
+
+	if(code_gen->parser->add_debug_comments) {
+		fprintf(code_gen->out, " ; [While/For Cond.]");
+	}
+	fprintf(code_gen->out, "\n");
+
 	fprintf(code_gen->out, "    jne L%d\n", label_start); //loop back if condition met
 	fprintf(code_gen->out, "    je L%d\n", label_end); //exit if condition not met
 

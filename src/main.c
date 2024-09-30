@@ -28,8 +28,8 @@ char *add_file_ext(char *base_name, char *ext) {
 }
 
 int main(int argc, char *argv[]) {
-	if (argc != 2) {
-		printf("Usage: rcc <filename>\n");
+	if (argc < 2) {
+		printf("Usage: %s <filename>\n", argv[0]);
 		return 1;
 	}
 
@@ -52,6 +52,11 @@ int main(int argc, char *argv[]) {
 	//memset(symbol_table.table, 0, NUM_SYMBOLS * sizeof(symbol_table_entry_t));
 	symbol_table.next_free = 0;
 	parser.symbol_table = &symbol_table;
+	parser.add_debug_comments = 0;
+
+	if(argc >= 3 && strcmp(argv[2], "-d") == 0) {
+		parser.add_debug_comments = 1;
+	}
 
 	lexer.out_file = fopen(add_file_ext(get_file_name(argv[1]), ".s"), "w"); // w = writes to a file, clears first
 
@@ -84,7 +89,7 @@ Basic return value in ASM
 global main
 section .text
   main:             ; label for "main" function
-	mov rdi, 2      ; move constant 2 into rdi
+	mov rdi, 2      ; move contant 2 into rdi
 	mov rax, 60     ; set up syscall #60
 	syscall         ; return rdi
 */

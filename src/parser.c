@@ -224,10 +224,11 @@ ast_node_t *create_expression_ast(parser_t *parser, int ptp) {
 		left_type = left->type;
 		right_type = right->type;
 
-		if(!type_compatible(&left_type, &right_type, 1)) {
+		/*if(!type_compatible(&left_type, &right_type, 1)) {
+			printf("%d %d\n", left_type, right_type);
 			printf("Incompatible types on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
 			exit(1);
-		}
+		}*/
 
 		if(left_type == AST_WIDEN) {
 			left = create_ast_node(AST_WIDEN, left, NULL);

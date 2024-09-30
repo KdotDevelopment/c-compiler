@@ -23,6 +23,7 @@ typedef struct parser_t {
 	size_t pos; //which token we are on
 	ast_node_t *root_node;
 	symbol_table_t *symbol_table;
+	int add_debug_comments;
 } parser_t;
 
 enum {
