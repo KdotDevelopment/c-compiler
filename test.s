@@ -5,10 +5,23 @@ section .text
     mov rdi, rax
     mov rax, 60
     syscall
-  _test:
+  _print:
     push rbp
     mov rbp, rsp
     sub rsp, 64
+    mov rax, 1
+    mov r14, 65
+    add r14, r15
+    mov -8[rbp], r14
+    mov edi, 1
+    mov rdx, 1
+    lea rsi, -8[rbp]
+    syscall
+    mov -8[rbp], 10
+    mov edi, 1
+    mov rdx, 1
+    lea rsi, -8[rbp]
+    syscall
     mov r8, 4
     mov rax, r8
     mov rsp, rbp
@@ -18,26 +31,33 @@ section .text
     push rbp
     mov rbp, rsp
     sub rsp, 64
-    mov r8, 12
-    mov BYTE -1[rbp], r8b
-    mov r8, 10
+    mov r8, 0
+    mov DWORD -4[rbp], r8d
+    mov r8, 0
     mov DWORD -8[rbp], r8d
-    mov r8, 3
-    mov DWORD -12[rbp], r8d
-    mov r8b, BYTE -1[rbp]
-    mov r9d, DWORD -8[rbp]
+    jmp L0
+  L0:
+    mov r8d, DWORD -4[rbp]
+    mov r9, 1
     add r8, r9
-    mov r9d, DWORD -12[rbp]
-    mov rax, r9
-    mul r8
+    mov DWORD -4[rbp], r8d
+    mov r15, DWORD -4[rbp]
+    call _print
     mov r8, rax
-    push r8
-    call _test
-    mov r9, rax
-    pop r8
+    mov r8d, DWORD -8[rbp]
+    mov r9, 1
     add r8, r9
-    mov DWORD -16[rbp], r8d
-    mov r8d, DWORD -16[rbp]
+    mov DWORD -8[rbp], r8d
+    mov r8d, DWORD -8[rbp]
+    mov r9, 10
+    cmp r8, r9
+    setl al
+    movzx r9, al
+    cmp r9, 0
+    jne L0
+    je L1
+  L1:
+    mov r8d, DWORD -4[rbp]
     mov rax, r8
     mov rsp, rbp
     pop rbp

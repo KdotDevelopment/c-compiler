@@ -1,6 +1,5 @@
 {
 	"files.associations": {
 		"*.rc": "c"
-	},
-	"makefile.configureOnOpen": true
+	}
 }

@@ -14,6 +14,7 @@ typedef struct ast_node_t {
 	union {
 		int int_value;
 		//uint64_t uint_value;
+		char *asm_line; //all text after a $
 		int symbol_id;
 	};
 } ast_node_t;
@@ -29,10 +30,13 @@ typedef struct parser_t {
 enum {
 	P_NONE,
 	P_VOID,
-	P_CHAR,   P_UCHAR,  // 1
-	P_SHORT,  P_USHORT, // 2
-	P_INT,    P_UINT,   // 4
-	P_LONG,   P_ULONG   // 8
+	P_CHAR,     P_UCHAR,  // 1
+	P_SHORT,    P_USHORT, // 2
+	P_INT,      P_UINT,   // 4
+	P_LONG,     P_ULONG,  // 8
+	P_VOIDPTR,  P_CHARPTR, //rest are 8?
+	P_SHORTPTR, P_INTPTR,
+	P_LONGPTR
 };
 
 enum {
@@ -61,7 +65,10 @@ enum {
 	AST_FOR,
 	AST_FUNCTION,
 	AST_CALL,
-	AST_WIDEN
+	AST_WIDEN,
+	AST_ADDRESS,
+	AST_DEREFERENCE,
+	AST_ASM
 };
 
 static char *ast_type_strings[] = {
@@ -91,7 +98,9 @@ static char *ast_type_strings[] = {
 	"FOR",
 	"FUNCTION",
 	"CALL",
-	"WIDEN"
+	"WIDEN",
+	"ADDRESS",
+	"DEREFERENCE"
 };
 
 ast_node_t *create_ast_node(int ast_type, ast_node_t *left, ast_node_t *right);

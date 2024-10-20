@@ -44,6 +44,13 @@ enum {
 
 	T_NOT,            // ! 11
 	T_ASSIGN,         // =
+	T_LOGAND,         // &&
+	T_LOGOR,          // ||
+	T_BITOR,          // |
+	T_AMPERSAND,      // &
+	T_DOLLAR,         // $ - used for asm instructions
+	T_LBRACKET,
+	T_RBRACKET,
 	T_IDENT,
 	T_SEMICOLON,
 	T_LPAREN,

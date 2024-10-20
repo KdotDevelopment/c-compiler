@@ -47,6 +47,11 @@ int get_type_size(int type) {
 			return 4;
 		case P_ULONG:
 		case P_LONG:
+		case P_VOIDPTR:
+		case P_CHARPTR:
+		case P_SHORTPTR:
+		case P_INTPTR:
+		case P_LONGPTR:
 			return 8;
 		default:
 			printf("Could not get type size\n");
@@ -381,12 +386,19 @@ void generate_function(ast_node_t *function_node, code_gen_t *code_gen) {
 	code_generation(code_gen, function_node->left);
 }
 
+void generate_asm(ast_node_t *asm_node, code_gen_t *code_gen) {
+	fprintf(code_gen->out, "    %s\n", asm_node->asm_line);
+}
+
 void code_generation(code_gen_t *code_gen, ast_node_t *node) {
 	if(node == NULL) {
 		printf("Node has returned null!\n");
 		exit(1);
 	}
 	switch(node->ast_type) {
+		case AST_ASM:
+			generate_asm(node, code_gen);
+			break;
 		case AST_RETURN:
 			generate_return(node, code_gen);
 			break;

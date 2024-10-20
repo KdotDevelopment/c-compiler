@@ -112,11 +112,36 @@ void get_keyword(token_t *token) { //takes the ident string and converts it to a
 	else token->keyword = K_IDENT; //Must be a user defined variable name
 }
 
+//takes rest of line and puts it into ident
+token_t scan_line(lexer_t *lexer) {
+	//lexer->character = get_next_char(lexer);
+
+	int line_num = lexer->line_num;
+
+	token_t token;
+	memset(token.ident_value, 0, MAX_IDENT_LENGTH);
+	token.int_value = -1;
+	token.token = T_IDENT;
+	token.keyword = K_ASM;
+	
+	int index = 0;
+
+	while(index < 32) {
+		lexer->character = get_next_char(lexer);
+		if(lexer->character == ';') break;
+		token.ident_value[index] = lexer->character;
+		index++;
+	}
+
+	return token;
+}
+
 token_t scan(lexer_t *lexer) {
 	lexer->character = skip_char(lexer); //this will also go to the next character automagically
 	token_t token;
 	memset(token.ident_value, 0, MAX_IDENT_LENGTH);
 	token.int_value = -1;
+	token.keyword = -1;
 	char next_char;
 	switch(lexer->character) {
 		case -1:
@@ -164,6 +189,15 @@ token_t scan(lexer_t *lexer) {
 		case '}':
 			token.token = T_RSQUIRLY;
 			break;
+		case '$':
+			token = scan_line(lexer);
+			break;
+		case '[':
+			token.token = T_LBRACKET;
+			break;
+		case ']':
+			token.token = T_RBRACKET;
+			break;
 		case '!':
 			next_char = skip_char(lexer);
 			if(next_char == '=') {
@@ -191,6 +225,24 @@ token_t scan(lexer_t *lexer) {
 			ungetc(next_char, lexer->in_file);
 			token.token = T_LESS_THAN;
 			break;
+		case '&':
+			next_char = skip_char(lexer);
+			if(next_char == '&') {
+				token.token = T_LOGAND;
+				break;
+			}
+			ungetc(next_char, lexer->in_file);
+			token.token = T_AMPERSAND;
+			break;
+		case '|':
+			next_char = skip_char(lexer);
+			if(next_char == '|') {
+				token.token = T_LOGOR;
+				break;
+			}
+			ungetc(next_char, lexer->in_file);
+			token.token = T_BITOR;
+			break;
 		default:
 			if(isdigit(lexer->character)) {
 				token.int_value = scan_int(lexer);
@@ -206,8 +258,7 @@ token_t scan(lexer_t *lexer) {
 			printf("Unrecognized character \'%c\' on line %ld\n", lexer->character, lexer->line_num);
 			exit(1);
 	}
-	token.keyword = -1;
-	get_keyword(&token);
+	if(token.keyword == -1) get_keyword(&token);
 	token.line_num = lexer->line_num;
 	return token; //successful
 }

@@ -61,22 +61,53 @@ int get_math_operator(int token, int line_num) {
 	}
 }
 
-int get_type(token_t *token) {
+int regular_to_pointer(int type) {
+	switch(type) {
+		case P_VOID: return P_VOIDPTR;
+		case P_CHAR: return P_CHARPTR;
+		case P_SHORT: return P_SHORTPTR;
+		case P_INT: return P_INTPTR;
+		case P_LONG: return P_LONGPTR;
+		default:
+			printf("Unknown regular type %d\n", type);
+			exit(1);
+	}
+}
+
+int pointer_to_regular(int type) {
+	switch(type) {
+		case P_VOIDPTR: return P_VOID;
+		case P_CHARPTR: return P_CHAR;
+		case P_SHORTPTR: return P_SHORT;
+		case P_INTPTR: return P_INT;
+		case P_LONGPTR: return P_LONG;
+		default:
+			printf("Unknown pointer type %d\n", type);
+			exit(1);
+	}
+}
+
+int get_type(token_t *token, parser_t *parser) {
+	int type;
 	switch(token->keyword) {
-		case K_INT:
-			return P_INT;
-		case K_CHAR:
-			return P_CHAR;
-		case K_SHORT:
-			return P_SHORT;
-		case K_VOID:
-			return P_VOID;
-		case K_LONG:
-			return P_LONG;
+		case K_INT: type = P_INT; break;
+		case K_CHAR: type = P_CHAR; break;
+		case K_SHORT: type = P_SHORT; break;
+		case K_VOID: type = P_VOID; break;
+		case K_LONG: type = P_LONG; break;
 		default:
 			printf("Unknown type %d on line %d\n", token->keyword, token->line_num);
 			exit(1);
 	}
+
+	//such as: char *test or char* test etc - will keep going for cases like char ****test
+	while(1) {
+		if(parser->lexer->tokens[parser->pos + 1]->token != T_STAR) break;
+		parser->pos++; //actually consume next
+		type = regular_to_pointer(type);
+	}
+
+	return type;
 }
 
 //see lex.h for the corresponding tokens (first are + - * / % == != < > <= >=)
@@ -135,10 +166,10 @@ int type_compatible(int *left, int *right, int only_right) {
 }
 
 ast_node_t *create_expression_ast(parser_t *parser, int ptp) {
-	if(parser->lexer->tokens[parser->pos]->token != T_INTLIT && parser->lexer->tokens[parser->pos]->token != T_IDENT && parser->lexer->tokens[parser->pos]->token != T_LPAREN) {
-		printf("Expected expression with integer or variable value on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
-		exit(1);
-	}
+	//if(parser->lexer->tokens[parser->pos]->token != T_INTLIT && parser->lexer->tokens[parser->pos]->token != T_IDENT && parser->lexer->tokens[parser->pos]->token != T_LPAREN) {
+	//	printf("Expected expression with integer or variable value on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
+	//	exit(1);
+	//}
 
 	ast_node_t *left;
 	ast_node_t *right;
@@ -194,7 +225,21 @@ ast_node_t *create_expression_ast(parser_t *parser, int ptp) {
 		}
 	}
 
-	parser->pos++; //goes from number to operator (unless a function)
+	//Address (&test)
+	if(parser->lexer->tokens[parser->pos]->token == T_AMPERSAND) {
+		if(parser->lexer->tokens[parser->pos]->token == T_IDENT) {
+			left = create_ast_leaf(AST_ADDRESS);
+		}else {
+			//exit
+		}
+	}
+
+	//Dereference (*test)
+	if(parser->lexer->tokens[parser->pos]->token == T_STAR) {
+		
+	}
+
+	parser->pos++; //goes from number/ident to operator (unless a function)
 
 	if(parser->lexer->tokens[parser->pos]->token == T_SEMICOLON) return left;
 	if(parser->lexer->tokens[parser->pos]->token == T_RPAREN) return left;
@@ -319,9 +364,15 @@ ast_node_t *var_declaration(parser_t *parser) {
     ast_node_t *variable_node = create_ast_leaf(AST_INT);
     parser->root_node->left = variable_node;
 
-	int variable_type = get_type(parser->lexer->tokens[parser->pos]);
+	int variable_type = get_type(parser->lexer->tokens[parser->pos], parser);
 
     parser->pos++; //from type to indent
+
+	//Dereference/pointer init (*test)
+	if(parser->lexer->tokens[parser->pos]->token == T_STAR) {
+		variable_type = regular_to_pointer(variable_type);
+		parser->pos++;
+	}
 
 	if(parser->lexer->tokens[parser->pos]->token != T_IDENT) {
 		printf("Expected indentifier after token int on line %d\n", parser->lexer->tokens[parser->pos]->line_num);
@@ -495,6 +546,16 @@ ast_node_t *handle_identifier(parser_t *parser) {
 	return function_call(parser);
 }
 
+//does not check for validness
+ast_node_t *asm_statement(parser_t *parser) {
+	int line_num = parser->lexer->tokens[parser->pos]->line_num;
+
+	ast_node_t *asm_node = create_ast_leaf(AST_ASM);
+	asm_node->asm_line = parser->lexer->tokens[parser->pos]->ident_value;
+
+	return asm_node;
+}
+
 ast_node_t *statement(parser_t *parser) {
 	if(parser->lexer->tokens[parser->pos]->token == T_LSQUIRLY) return statement_block(parser);
 
@@ -504,6 +565,9 @@ ast_node_t *statement(parser_t *parser) {
 	if(current_token == NULL) return NULL;
 	
 	switch(current_token->keyword) {
+		case K_ASM:
+			current_node = asm_statement(parser);
+			break;
 		case K_RETURN:
 			current_node = return_statement(parser);
 			break;
@@ -568,7 +632,7 @@ ast_node_t *if_statement(parser_t *parser) {
 ast_node_t *function(parser_t *parser) {
 	ast_node_t *function_node = create_ast_leaf(AST_FUNCTION);
 
-	int type = get_type(parser->lexer->tokens[parser->pos]);
+	int type = get_type(parser->lexer->tokens[parser->pos], parser);
 
 	parser->pos++; //type -> name
 
