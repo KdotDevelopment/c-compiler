@@ -30,8 +30,8 @@ section .text
     mov DWORD -8[rbp], r8d
     jmp L0
   L0:
-    mov edi, DWORD -4[rbp]
-    add rdi, 65
+    mov rdi, DWORD -4[rbp]
+    add rdi, 'A'
     mov r8d, DWORD -4[rbp]
     mov r9, 1
     add r8, r9
@@ -60,7 +60,7 @@ section .text
     add r8, r9
     mov DWORD -8[rbp], r8d
     mov r8d, DWORD -8[rbp]
-    mov r9, 25
+    mov r9, 30
     cmp r8, r9
     setl al
     movzx r9, al
@@ -68,21 +68,32 @@ section .text
     jne L0
     je L1
   L1:
-    mov rdi, 72
+    mov rdi, 'H'
     call _print
     mov r8, rax
-    mov rdi, 101
+    mov rdi, 'e'
     call _print
     mov r8, rax
-    mov rdi, 108
+    mov rdi, 'l'
     call _print
     mov r8, rax
-    mov rdi, 108
+    mov rdi, 'l'
     call _print
     mov r8, rax
-    mov rdi, 111
+    mov rdi, 'o'
     call _print
     mov r8, rax
+    mov rdi, '\n'
+    call _print
+    mov r8, rax
+    mov rax, 1
+    mov -8[rbp], 65
+    mov -7[rbp], 66
+    mov -6[rbp], 67
+    mov edi, 1
+    mov rdx, 3
+    lea rsi, -8[rbp]
+    syscall
     mov rdi, 10
     call _print
     mov r8, rax

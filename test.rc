@@ -10,9 +10,9 @@ int print() {
 
 int main() {
     int z = 0;
-    for(int i = 0; i < 25; i = i + 1) {
-        $mov edi, DWORD -4[rbp];
-        $add rdi, 65;
+    for(int i = 0; i < 30; i = i + 1) {
+        $mov rdi, DWORD -4[rbp];
+        $add rdi, 'A';
         z = z + 1;
         print();
         if(i % 5 == 0) {
@@ -22,17 +22,29 @@ int main() {
     }
 
     //prints Hello \n
-    $mov rdi, 72;
+    $mov rdi, 'H';
     print();
-    $mov rdi, 101;
+    $mov rdi, 'e';
     print();
-    $mov rdi, 108;
+    $mov rdi, 'l';
     print();
-    $mov rdi, 108;
+    $mov rdi, 'l';
     print();
-    $mov rdi, 111;
+    $mov rdi, 'o';
     print();
-    $mov rdi, 10;
+    $mov rdi, '\n';
+    print();
+
+    $mov rax, 1;
+    $mov -8[rbp], 65;
+    $mov -7[rbp], 66;
+    $mov -6[rbp], 67;
+    $mov edi, 1;
+    $mov rdx, 3;
+    $lea rsi, -8[rbp];
+    $syscall;
+
+    $mov rdi, '\n';
     print();
     
     return z;
