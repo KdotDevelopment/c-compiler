@@ -114,10 +114,6 @@ void get_keyword(token_t *token) { //takes the ident string and converts it to a
 
 //takes rest of line and puts it into ident
 token_t scan_line(lexer_t *lexer) {
-	//lexer->character = get_next_char(lexer);
-
-	int line_num = lexer->line_num;
-
 	token_t token;
 	memset(token.ident_value, 0, MAX_IDENT_LENGTH);
 	token.int_value = -1;
@@ -134,6 +130,16 @@ token_t scan_line(lexer_t *lexer) {
 	}
 
 	return token;
+}
+
+//skips past everything until newline
+void line_comment(lexer_t *lexer) {
+	lexer->character = get_next_char(lexer);
+	int line_num = lexer->line_num;
+
+	while(lexer->line_num == line_num) {
+		lexer->character = get_next_char(lexer);
+	}
 }
 
 token_t scan(lexer_t *lexer) {
@@ -160,6 +166,14 @@ token_t scan(lexer_t *lexer) {
 			token.token = T_PERCENT;
 			break;
 		case '/':
+			next_char = skip_char(lexer);
+			if(next_char == '/') {
+				//token.token = T_DOUBLE_SLASH;
+				line_comment(lexer);
+				token.token = -1;
+				return token;
+			}
+			ungetc(next_char, lexer->in_file);
 			token.token = T_SLASH;
 			break;
 		case '=':
@@ -286,6 +300,7 @@ int lex(lexer_t *lexer) {
 		token_t *permenant_token = malloc(sizeof(token_t));
 
 		current_token = scan(lexer);
+		if(current_token.token == -1) continue;
 		strcpy(permenant_token->ident_value, current_token.ident_value);
 		permenant_token->int_value = current_token.int_value;
 		permenant_token->keyword = current_token.keyword;

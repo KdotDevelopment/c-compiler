@@ -32,6 +32,7 @@ enum {
 	T_MINUS,
 	T_STAR,
 	T_SLASH,
+	T_DOUBLE_SLASH,   // //
 	T_PERCENT,
 	T_EQUALS,         // ==
 	T_NOT_EQUALS,     // !=
@@ -51,6 +52,8 @@ enum {
 	T_DOLLAR,         // $ - used for asm instructions
 	T_LBRACKET,
 	T_RBRACKET,
+	T_SINGLE_QUOTE,
+	T_DOUBLE_QUOTE,
 	T_IDENT,
 	T_SEMICOLON,
 	T_LPAREN,

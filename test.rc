@@ -1,13 +1,6 @@
 int print() {
     $mov rax, 1;
-    $mov r14, 65;
-    $add r14, r15;
-    $mov -8[rbp], r14;
-    $mov edi, 1;
-    $mov rdx, 1;
-    $lea rsi, -8[rbp];
-    $syscall;
-    $mov -8[rbp], 10;
+    $mov -8[rbp], rdi;
     $mov edi, 1;
     $mov rdx, 1;
     $lea rsi, -8[rbp];
@@ -17,11 +10,30 @@ int print() {
 
 int main() {
     int z = 0;
-    for(int i = 0; i < 10; i = i + 1) {
+    for(int i = 0; i < 25; i = i + 1) {
+        $mov edi, DWORD -4[rbp];
+        $add rdi, 65;
         z = z + 1;
-        $mov r15, DWORD -4[rbp];
         print();
+        if(i % 5 == 0) {
+            $mov rdi, 10;
+            print();
+        }
     }
+
+    //prints Hello \n
+    $mov rdi, 72;
+    print();
+    $mov rdi, 101;
+    print();
+    $mov rdi, 108;
+    print();
+    $mov rdi, 108;
+    print();
+    $mov rdi, 111;
+    print();
+    $mov rdi, 10;
+    print();
     
     return z;
 }

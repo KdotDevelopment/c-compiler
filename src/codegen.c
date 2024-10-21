@@ -90,7 +90,7 @@ int cg_div(int r1, int r2, code_gen_t *code_gen) {
 	fprintf(code_gen->out, "    mov rax, %s\n", reg_list[r1]);
 	fprintf(code_gen->out, "    mov rbx, %s\n", reg_list[r2]);
 	fprintf(code_gen->out, "    div rbx\n");
-	fprintf(code_gen->out, "    mov %s, rax ; rax = quotient from div\n", reg_list[r2]); //rax = quotient
+	fprintf(code_gen->out, "    mov %s, rax\n", reg_list[r2]); //rax = quotient
 	free_register(r1, code_gen);
 	return r2;
 }
@@ -99,7 +99,7 @@ int cg_mod(int r1, int r2, code_gen_t *code_gen) {
 	fprintf(code_gen->out, "    mov rax, %s\n", reg_list[r1]);
 	fprintf(code_gen->out, "    mov rbx, %s\n", reg_list[r2]);
 	fprintf(code_gen->out, "    div rbx\n");
-	fprintf(code_gen->out, "    mov %s, rdx ; rdx = remainder from div\n", reg_list[r2]); //rdx = remainder
+	fprintf(code_gen->out, "    mov %s, rdx\n", reg_list[r2]); //rdx = remainder
 	free_register(r1, code_gen);
 	return r2;
 }

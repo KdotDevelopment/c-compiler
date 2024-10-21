@@ -111,7 +111,7 @@ int get_type(token_t *token, parser_t *parser) {
 }
 
 //see lex.h for the corresponding tokens (first are + - * / % == != < > <= >=)
-static int operator_precedences[] = {10, 10, 20, 20, 20, 30, 30, 40, 40, 40, 40};
+static int operator_precedences[] = {30, 30, 40, 40, 40, 10, 10, 20, 20, 20, 20};
 
 int operator_precedence(int token) {
 	int precedence = operator_precedences[token];

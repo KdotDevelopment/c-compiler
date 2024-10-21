@@ -13,7 +13,6 @@ typedef struct ast_node_t {
 	char *name;
 	union {
 		int int_value;
-		//uint64_t uint_value;
 		char *asm_line; //all text after a $
 		int symbol_id;
 	};
